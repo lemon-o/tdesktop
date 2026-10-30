@@ -31,6 +31,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install packaging and compression tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev libssl-dev llvm upx p7zip-full
+
       - name: Download macOS build artifact
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -49,18 +54,52 @@ jobs:
           echo "Windows artifact contents:"
           ls -la win_dl/
 
-      - name: Create Windows ZIP package
+      - name: Process and package Windows x64 release
         run: |
+          echo "Original Windows binary sizes:"
+          ls -lh win_dl/
+
+          # 1. Strip debug info using llvm-strip
+          echo "Stripping Windows binaries..."
+          llvm-strip --strip-all win_dl/Telegram.exe || llvm-strip --strip-debug win_dl/Telegram.exe || true
+          llvm-strip --strip-all win_dl/Updater.exe || llvm-strip --strip-debug win_dl/Updater.exe || true
+
+          echo "Sizes after llvm-strip:"
+          ls -lh win_dl/
+
+          # 2. UPX compression
+          echo "Compressing with UPX..."
+          cp win_dl/Telegram.exe win_dl/Telegram.exe.bak
+          if upx --best win_dl/Telegram.exe; then
+            echo "UPX compression on Telegram.exe succeeded!"
+            rm -f win_dl/Telegram.exe.bak
+          else
+            echo "UPX compression on Telegram.exe failed, keeping stripped binary..."
+            mv win_dl/Telegram.exe.bak win_dl/Telegram.exe
+          fi
+
+          if [ -f win_dl/Updater.exe ]; then
+            cp win_dl/Updater.exe win_dl/Updater.exe.bak
+            if upx --best win_dl/Updater.exe; then
+              echo "UPX compression on Updater.exe succeeded!"
+              rm -f win_dl/Updater.exe.bak
+            else
+              mv win_dl/Updater.exe.bak win_dl/Updater.exe
+            fi
+          fi
+
+          echo "Sizes after UPX:"
+          ls -lh win_dl/
+
+          # 3. Create high-compression ZIP package using 7z
+          echo "Creating Telegram-Windows-x64.zip..."
           cd win_dl
-          zip -9 -r ../Telegram-Windows-x64.zip Telegram.exe Updater.exe
+          7z a -tzip -mx=9 ../Telegram-Windows-x64.zip Telegram.exe Updater.exe
           cd ..
           ls -lh Telegram-Windows-x64.zip
 
-      - name: Create macOS DMG package
+      - name: Process and package macOS DMG release
         run: |
-          sudo apt-get update
-          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev libssl-dev
-
           mkdir -p dmg_staging
           cp -a mac_dl/Telegram.app dmg_staging/
           if [ -f mac_dl/Updater ]; then
@@ -71,16 +110,30 @@ jobs:
           chmod +x dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
           ln -s /Applications dmg_staging/Applications
 
-          # Create raw Apple HFS disk image
-          genisoimage -V "Telegram" -D -R -apple -no-pad -o Telegram-raw.dmg dmg_staging/
+          # 1. Strip macOS Mach-O debug symbols
+          echo "Original macOS binary size:"
+          ls -lh dmg_staging/Telegram.app/Contents/MacOS/Telegram
 
-          # Build libdmg-hfsplus (openssl-1.1 branch with modern OpenSSL support)
+          echo "Stripping macOS binaries with llvm-strip..."
+          llvm-strip -x dmg_staging/Telegram.app/Contents/MacOS/Telegram || llvm-strip --strip-debug dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
+          if [ -f dmg_staging/Telegram.app/Contents/Frameworks/Updater ]; then
+            llvm-strip -x dmg_staging/Telegram.app/Contents/Frameworks/Updater || llvm-strip --strip-debug dmg_staging/Telegram.app/Contents/Frameworks/Updater || true
+          fi
+          find dmg_staging/Telegram.app/Contents/Frameworks -name "*.dylib" -exec llvm-strip --strip-debug {} + 2>/dev/null || true
+
+          echo "Stripped macOS binary size:"
+          ls -lh dmg_staging/Telegram.app/Contents/MacOS/Telegram
+
+          # 2. Build libdmg-hfsplus (openssl-1.1 branch with modern OpenSSL support)
           git clone -b openssl-1.1 --depth 1 https://github.com/planetbeing/libdmg-hfsplus.git
           cd libdmg-hfsplus
           sed -i 's/VERSION [0-9.]*/VERSION 3.5/' CMakeLists.txt
           cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 .
           make -j$(nproc)
           cd ..
+
+          # 3. Create raw Apple HFS disk image
+          genisoimage -V "Telegram" -D -R -apple -no-pad -o Telegram-raw.dmg dmg_staging/
 
           DMG_BIN=$(find libdmg-hfsplus -type f -name "dmg" -perm /111 | head -n 1)
           if [ -n "$DMG_BIN" ] && [ -x "$DMG_BIN" ]; then
