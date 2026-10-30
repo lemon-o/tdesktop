@@ -59,7 +59,7 @@ jobs:
       - name: Create macOS DMG package
         run: |
           sudo apt-get update
-          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev llvm
+          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev libssl-dev llvm
 
           mkdir -p dmg_staging
           cp -a mac_dl/Telegram.app dmg_staging/
@@ -70,27 +70,30 @@ jobs:
           fi
 
           # Strip debug symbols and symbol tables from Mach-O binaries using llvm-strip
+          find dmg_staging -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
           llvm-strip dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
           find dmg_staging/Telegram.app/Contents/Frameworks -name "*.dylib" -exec llvm-strip {} + 2>/dev/null || true
           chmod +x dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
           ln -s /Applications dmg_staging/Applications
 
-          # Create raw disk image using genisoimage
+          echo "Top 20 largest files in app:"
+          du -ah dmg_staging | sort -rh | head -n 20
+
+          # Create Apple HFS hybrid disk image
           genisoimage -V "Telegram" -D -R -apple -no-pad -o Telegram-raw.dmg dmg_staging/
 
-          # Build libdmg-hfsplus without OpenSSL/crypto to produce compressed UDZO DMG
-          git clone --depth 1 https://github.com/hamstergene/libdmg-hfsplus.git
+          # Build libdmg-hfsplus (openssl-1.1 branch with modern OpenSSL support)
+          git clone -b openssl-1.1 --depth 1 https://github.com/planetbeing/libdmg-hfsplus.git
           cd libdmg-hfsplus
           sed -i 's/VERSION [0-9.]*/VERSION 3.5/' CMakeLists.txt
-          sed -i 's/find_package(OpenSSL)/# find_package(OpenSSL)/' dmg/CMakeLists.txt || true
-          sed -i 's/if(OPENSSL_FOUND)/if(FALSE)/' dmg/CMakeLists.txt || true
           cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 .
           make -j$(nproc) dmg || true
           cd ..
 
           if [ -f libdmg-hfsplus/dmg/dmg ]; then
             echo "Compressing into native Apple UDZO DMG using libdmg..."
-            ./libdmg-hfsplus/dmg/dmg dmg Telegram-raw.dmg Telegram-macOS.dmg || cp Telegram-raw.dmg Telegram-macOS.dmg
+            ./libdmg-hfsplus/dmg/dmg dmg Telegram-raw.dmg Telegram-macOS.dmg
+            rm -f Telegram-raw.dmg
           else
             echo "Using raw disk image as DMG..."
             cp Telegram-raw.dmg Telegram-macOS.dmg
