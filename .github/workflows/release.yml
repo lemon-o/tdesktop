@@ -34,7 +34,7 @@ jobs:
       - name: Install packaging and compression tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev libssl-dev llvm upx p7zip-full
+          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev libssl-dev llvm p7zip-full
 
       - name: Download macOS build artifact
         env:
@@ -60,41 +60,17 @@ jobs:
           ls -lh win_dl/
 
           # 1. Strip debug info using llvm-strip
-          echo "Stripping Windows binaries..."
+          echo "Stripping Windows binaries with llvm-strip..."
           llvm-strip --strip-all win_dl/Telegram.exe || llvm-strip --strip-debug win_dl/Telegram.exe || true
           llvm-strip --strip-all win_dl/Updater.exe || llvm-strip --strip-debug win_dl/Updater.exe || true
 
           echo "Sizes after llvm-strip:"
           ls -lh win_dl/
 
-          # 2. UPX compression
-          echo "Compressing with UPX..."
-          cp win_dl/Telegram.exe win_dl/Telegram.exe.bak
-          if upx --best win_dl/Telegram.exe; then
-            echo "UPX compression on Telegram.exe succeeded!"
-            rm -f win_dl/Telegram.exe.bak
-          else
-            echo "UPX compression on Telegram.exe failed, keeping stripped binary..."
-            mv win_dl/Telegram.exe.bak win_dl/Telegram.exe
-          fi
-
-          if [ -f win_dl/Updater.exe ]; then
-            cp win_dl/Updater.exe win_dl/Updater.exe.bak
-            if upx --best win_dl/Updater.exe; then
-              echo "UPX compression on Updater.exe succeeded!"
-              rm -f win_dl/Updater.exe.bak
-            else
-              mv win_dl/Updater.exe.bak win_dl/Updater.exe
-            fi
-          fi
-
-          echo "Sizes after UPX:"
-          ls -lh win_dl/
-
-          # 3. Create high-compression ZIP package using 7z
+          # 2. Create high-compression ZIP package using 7-Zip (maximum Deflate settings)
           echo "Creating Telegram-Windows-x64.zip..."
           cd win_dl
-          7z a -tzip -mx=9 ../Telegram-Windows-x64.zip Telegram.exe Updater.exe
+          7z a -tzip -mx=9 -mfb=258 -mpass=15 ../Telegram-Windows-x64.zip Telegram.exe Updater.exe
           cd ..
           ls -lh Telegram-Windows-x64.zip
 
