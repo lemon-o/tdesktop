@@ -59,7 +59,7 @@ jobs:
       - name: Create macOS DMG package
         run: |
           sudo apt-get update
-          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev libssl-dev
+          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev libssl-dev llvm
 
           mkdir -p dmg_staging
           cp -a mac_dl/Telegram.app dmg_staging/
@@ -68,16 +68,21 @@ jobs:
             cp mac_dl/Updater dmg_staging/Telegram.app/Contents/Frameworks/Updater
             chmod +x dmg_staging/Telegram.app/Contents/Frameworks/Updater
           fi
+
+          # Strip debug symbols from Mach-O binary
+          llvm-strip --strip-debug dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
           chmod +x dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
           ln -s /Applications dmg_staging/Applications
 
           # Create Apple HFS hybrid disk image
           genisoimage -V "Telegram" -D -R -apple -no-pad -o Telegram-raw.dmg dmg_staging/
 
-          # Try building libdmg-hfsplus to produce compressed UDZO DMG
+          # Build libdmg-hfsplus to produce compressed UDZO DMG
           if git clone --depth 1 https://github.com/hamstergene/libdmg-hfsplus.git; then
             cd libdmg-hfsplus
-            cmake . && make -j$(nproc) dmg || true
+            sed -i 's/VERSION [0-9.]*/VERSION 3.5/' CMakeLists.txt
+            cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 .
+            make -j$(nproc) dmg || true
             cd ..
             if [ -f libdmg-hfsplus/dmg/dmg ]; then
               ./libdmg-hfsplus/dmg/dmg dmg Telegram-raw.dmg Telegram-macOS.dmg || cp Telegram-raw.dmg Telegram-macOS.dmg
