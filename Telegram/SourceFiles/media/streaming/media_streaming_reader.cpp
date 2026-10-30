@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "media/streaming/media_streaming_common.h"
 #include "media/streaming/media_streaming_loader.h"
 #include "storage/cache/storage_cache_database.h"
+#include "settings.h"
 
 namespace Media {
 namespace Streaming {
@@ -21,11 +22,22 @@ constexpr auto kInSlice = uint32(kPartsInSlice * kPartSize);
 constexpr auto kMaxPartsInHeader = 64;
 constexpr auto kMaxOnlyInHeader = 80 * kPartSize;
 constexpr auto kPartsOutsideFirstSliceGood = 8;
-constexpr auto kSlicesInMemory = 2;
+constexpr auto kSlicesInMemory = 8;
 
 // 1 MB of parts are requested from cloud ahead of reading demand.
 constexpr auto kPreloadPartsAhead = 8;
-constexpr auto kDownloaderRequestsLimit = 8;
+constexpr auto kDownloaderRequestsLimit = 32;
+
+int StreamingPreloadPartsAhead() {
+	switch (cStreamingBufferSize()) {
+	case StreamingBufferBoost::Aggressive:
+		return 256;
+	case StreamingBufferBoost::Enhanced:
+		return 128;
+	default:
+		return 8;
+	}
+}
 
 using PartsMap = base::flat_map<uint32, QByteArray>;
 
@@ -276,7 +288,7 @@ auto Reader::Slice::prepareFill(
 	result.ready = false;
 	const auto fromOffset = (from / kPartSize) * kPartSize;
 	const auto tillPart = (till + kPartSize - 1) / kPartSize;
-	const auto preloadTillOffset = (tillPart + kPreloadPartsAhead)
+	const auto preloadTillOffset = (tillPart + StreamingPreloadPartsAhead())
 		* kPartSize;
 
 	const auto after = ranges::upper_bound(
@@ -327,7 +339,7 @@ auto Reader::Slice::offsetsFromLoader(uint32 from, uint32 till) const
 		&PartsMap::value_type::first);
 	auto check = (after == begin(parts)) ? after : (after - 1);
 	const auto end = parts.end();
-	for (auto offset = from; offset != till; offset += kPartSize) {
+	for (auto offset = from; offset < till; offset += kPartSize) {
 		while (check != end && check->first < offset) {
 			++check;
 		}
@@ -623,6 +635,30 @@ auto Reader::Slices::fill(uint32 offset, bytes::span buffer) -> FillResult {
 	handlePrepareResult(fromSlice, first);
 	if (fromSlice + 1 < tillSlice) {
 		handlePrepareResult(fromSlice + 1, second);
+	}
+	const auto preloadDistance = uint32(StreamingPreloadPartsAhead() * kPartSize);
+	const auto preloadTillOffset = std::min(till + preloadDistance, _size);
+	const auto preloadTillSlice = (preloadTillOffset + kInSlice - 1) / kInSlice;
+	for (auto s = int(fromSlice + 1); s < int(preloadTillSlice) && s < int(_data.size()); ++s) {
+		if (s < tillSlice) {
+			continue;
+		}
+		if (cacheNotLoaded(s)) {
+			if (!(_data[s].flags & Flag::LoadingFromCache)) {
+				_data[s].flags |= Flag::LoadingFromCache;
+				result.sliceNumbersFromCache.add(s + 1);
+			}
+		} else {
+			const auto sliceTill = std::min(kInSlice, preloadTillOffset - s * kInSlice);
+			for (const auto offset : _data[s].offsetsFromLoader(0, sliceTill).values()) {
+				const auto full = s * kInSlice + offset;
+				if (offset < kInSlice && full < _size) {
+					if (!result.offsetsFromLoader.add(full)) {
+						break;
+					}
+				}
+			}
+		}
 	}
 	if (first.ready && second.ready) {
 		markSliceUsed(fromSlice);

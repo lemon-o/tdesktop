@@ -64,6 +64,27 @@ namespace Settings {
 			Ui::show(Box<NetBoostBox>());
 		});
 
+		auto downloadBoostBtn = AddButtonWithLabel(
+				inner,
+				tr::lng_settings_net_download_speed_boost(),
+				rpl::single(NetDownloadBoostBox::BoostLabel(GetEnhancedInt("net_dl_speed_boost"))),
+				st::settingsButtonNoIcon
+		);
+		downloadBoostBtn->setColorOverride(QColor(255, 0, 0));
+		downloadBoostBtn->addClickHandler([=] {
+			Ui::show(Box<NetDownloadBoostBox>());
+		});
+
+		auto preloadBufferBtn = AddButtonWithLabel(
+				inner,
+				tr::lng_settings_streaming_preload_buffer(),
+				rpl::single(VideoPreloadBufferBox::BufferLabel(GetEnhancedInt("video_preload_buffer"))),
+				st::settingsButtonNoIcon
+		);
+		preloadBufferBtn->addClickHandler([=] {
+			Ui::show(Box<VideoPreloadBufferBox>());
+		});
+
 		AddSkip(container);
 	}
 

@@ -150,6 +150,13 @@ DeclareSetting(int, NetRequestsCount);
 DeclareSetting(int, NetUploadSessionsCount);
 DeclareSetting(int, NetUploadRequestInterval);
 
+enum class StreamingBufferBoost {
+	Standard = 0,
+	Enhanced = 1,
+	Aggressive = 2,
+};
+DeclareSetting(StreamingBufferBoost, StreamingBufferSize);
+
 inline bool GetEnhancedBool(const QString& key) {
 	if (!gEnhancedOptions.contains(key)) {
 		return false;
@@ -187,6 +194,38 @@ inline void SetNetworkBoost(int boost) {
 	cSetNetRequestsCount(2 + (2 * GetEnhancedInt("net_speed_boost")));
 	cSetNetUploadSessionsCount(2 + (2 * GetEnhancedInt("net_speed_boost")));
 	cSetNetUploadRequestInterval(500 - (100 * GetEnhancedInt("net_speed_boost")));
+}
+
+inline void SetNetworkDLBoost(int boost) {
+	if (boost < 0) {
+		gEnhancedOptions.insert("net_dl_speed_boost", 0);
+	} else if (boost > 3) {
+		gEnhancedOptions.insert("net_dl_speed_boost", 3);
+	} else {
+		gEnhancedOptions.insert("net_dl_speed_boost", boost);
+	}
+}
+
+inline void SetVideoPreloadBuffer(int level) {
+	if (level < 0) {
+		gEnhancedOptions.insert("video_preload_buffer", 0);
+	} else if (level > 2) {
+		gEnhancedOptions.insert("video_preload_buffer", 2);
+	} else {
+		gEnhancedOptions.insert("video_preload_buffer", level);
+	}
+
+	switch (GetEnhancedInt("video_preload_buffer")) {
+	case 1:
+		cSetStreamingBufferSize(StreamingBufferBoost::Enhanced);
+		break;
+	case 2:
+		cSetStreamingBufferSize(StreamingBufferBoost::Aggressive);
+		break;
+	default:
+		cSetStreamingBufferSize(StreamingBufferBoost::Standard);
+		break;
+	}
 }
 
 inline bool blockExist(int64 id) {

@@ -73,3 +73,4 @@ int gNetRequestsCount = 2;
 int gNetUploadSessionsCount = 2;
 int gNetUploadRequestInterval = 500;
 int gAlwaysDeleteFor = 0;
+StreamingBufferBoost gStreamingBufferSize = StreamingBufferBoost::Enhanced;

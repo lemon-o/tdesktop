@@ -84,7 +84,7 @@ public:
 	~Reader();
 
 private:
-	static constexpr auto kLoadFromRemoteMax = 8;
+	static constexpr auto kLoadFromRemoteMax = 256;
 
 	struct CacheHelper;
 
@@ -108,7 +108,7 @@ private:
 		QByteArray data;
 	};
 	struct FillResult {
-		static constexpr auto kReadFromCacheMax = 2;
+		static constexpr auto kReadFromCacheMax = 8;
 
 		StackIntVector<kReadFromCacheMax> sliceNumbersFromCache;
 		StackIntVector<kLoadFromRemoteMax> offsetsFromLoader;

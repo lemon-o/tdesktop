@@ -8791,6 +8791,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_enhanced" = "Enhanced Settings";
 "lng_settings_network" = "Network";
 "lng_settings_net_upload_speed_boost" = "Upload speed boost";
+"lng_settings_net_download_speed_boost" = "Download speed boost";
+"lng_settings_streaming_preload_buffer" = "Video preload buffer";
 "lng_settings_show_message_id" = "Show message ID";
 "lng_settings_button" = "Button";
 "lng_settings_show_emoji_button_as_text" = "Show emoji button as text";
@@ -8838,6 +8840,17 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_net_speed_boost_slight" = "Slight";
 "lng_net_speed_boost_medium" = "Medium";
 "lng_net_speed_boost_big" = "Big";
+
+"lng_net_download_speed_boost_desc" = "Warning: higher concurrency speeds up downloads on fast connections, but may cause congestion on slow networks.";
+"lng_net_download_speed_boost_off" = "Off (4 threads)";
+"lng_net_download_speed_boost_medium" = "Medium (8 threads)";
+"lng_net_download_speed_boost_high" = "High (16 threads)";
+"lng_net_download_speed_boost_extreme" = "Extreme (32 threads)";
+
+"lng_streaming_preload_buffer_desc" = "Preload ahead of playback position to avoid buffering on high-latency networks.";
+"lng_streaming_preload_buffer_default" = "Standard (1 MB - Default)";
+"lng_streaming_preload_buffer_enhanced" = "Enhanced (16 MB - Smooth)";
+"lng_streaming_preload_buffer_aggressive" = "Extreme (32 MB - High Latency/Bitrate)";
 
 "lng_net_boost_restart_desc" = "You'll need to restart app to change network boost.\n\nRestart now?";
 "lng_show_messages_id_desc" = "Warning: the changes will take effect immediately with restart.";
