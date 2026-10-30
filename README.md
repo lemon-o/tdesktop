@@ -1,57 +1,74 @@
-﻿# 64Gram – Based on [Telegram Desktop](https://github.com/telegramdesktop/tdesktop)
-
-The source code is published under GPLv3 with OpenSSL exception, the license is available [here][license].
+# 64Gram (Enhanced with Download Speed & Video Streaming Boost)
 
 [![Preview of 64Gram][preview_image]][preview_image_url]
 
-## Project Goal
+本项目基于 [64Gram (TDesktop-x64)](https://github.com/TDesktop-x64/tdesktop) 与官方 [Telegram Desktop](https://github.com/telegramdesktop/tdesktop) 构建，在其丰富增强特性的基础上，**重构并引入了多线程 MTProto 大文件下载加速**与**视频流媒体大窗口连续顺序预缓存加速**功能。
 
-Provide Windows 64bit build with some enhancements.
+The source code is published under GPLv3 with OpenSSL exception, the license is available [here][license].
 
-~~Cause official Telegram Desktop do not provide Windows 64bit build, so [Project TDesktop x64](https://github.com/TDesktop-x64) is aimed at provide Windows native x64 build(with few enhancements) to everybody.~~
+---
 
-## Roadmap
+## ⚡ 核心增强特性 (Core Enhancements)
 
-No Roadmap? Yes.
+### 1. MTProto 多线程大文件下载加速 (Download Speed Boost)
+- **多通道高并发**：突破官方默认 4 并发的限制，提供 **8 线程 (Medium) / 16 线程 (High) / 32 线程 (Extreme)** 多并发通道，并利用多个 MTProto Session 均摊拉取流量。
+- **底层架构安全**：严格保持官方 128KB 分片结构与上游协议 100% 对齐兼容，彻底杜绝历史版本因暴力魔改底层分片大小而导致的切片索引错位、本地缓存损坏与崩溃问题。
+- **下载速度翻倍**：大文件、压缩包、离线资源下载轻松跑满宽带与代理带宽上限。
+- **配置入口**：`设置 (Settings)` -> `64Gram 增强设置 (Enhanced Settings)` -> `下载加速 (Download speed boost)`。
 
-## [Features](features.md)
+### 2. 视频流媒体大窗口顺序连续预缓存 (Video Preload Buffer Boost)
+- **告别频繁转圈**：针对官方播放器仅预取 1MB (8 个分片) 导致跨国代理/高延迟网络 (RTT 150ms~250ms+) 下极易断流缓冲转圈的元凶进行专项重构。
+- **大窗口顺序连续预取**：支持 **16MB (Enhanced) / 32MB (Extreme)** 顺序预取余量，播放时始终在后台保持 30~60 秒的音视频储备。
+- **流畅秒开秒播**：高码率 1080P/4K 视频秒开秒播，随意拖拽进度条无需等待缓冲。
+- **配置入口**：`设置 (Settings)` -> `64Gram 增强设置 (Enhanced Settings)` -> `视频预取缓冲区 (Video preload buffer)`。
 
-## Supported systems
+---
 
-Windows 7 and above
+## 📦 客户端下载 (Downloads & Releases)
 
-Linux 64 bit
+最新打包构建可前往 [GitHub Releases](https://github.com/lemon-o/tdesktop/releases) 页面下载：
 
-macOS > 10.12 and above
+- **macOS**: `Telegram-macOS.dmg`
+  - 原生 Apple 磁盘映像（DMG 格式），下载挂载后将 `Telegram.app` 拖入“应用程序”文件夹即可使用。
+- **Windows x64**: `Telegram-Windows-x64.zip`
+  - Windows 64 位原生绿色便携包，解压后双击 `Telegram.exe` 即可运行。
 
-The latest version is available on the [Release](https://github.com/TDesktop-x64/tdesktop/releases) page.
+---
 
-## Localization
+## [原项目增强功能一览 (Features)](features.md)
 
-If you want to translate this project, **Just Do It!**
+除了上述新增的下载与流媒体加速特性外，完整继承了 64Gram 备受好评的实用功能：
+- 消息防撤回与已删除消息提示
+- 自定义群组与私聊双向彻底删除
+- 多账号登录支持（最多支持 10 个账号同时在线）
+- 显示聊天 ID (Chat ID) 与消息 ID (Message ID)
+- 无引用转发 (Forward without quote)
+- 解锁全部群组权限限制
+- 更多功能详见 [features.md](features.md)
 
-Create a Pull Request: [Localization Repo](https://github.com/TDesktop-x64/Localization).
+## 支持的操作系统 (Supported Systems)
 
-**Here is a project [translation template](https://github.com/TDesktop-x64/Localization/blob/master/en.json).**
+- **Windows**: Windows 7 及更高版本（64 位原生构建）
+- **macOS**: macOS 10.12 及更高版本
+- **Linux**: Linux 64-bit
 
-You can find a language ID on Telegram's log.txt
+## 界面语言与本地化 (Localization)
 
-For example: `[2022.04.23 10:37:45] Current Language pack ID: de, Base ID: `
+如果需要翻译或更新多语言包，欢迎提交 Pull Request：
+- [Localization 语言仓库](https://github.com/TDesktop-x64/Localization)
+- [语言翻译模板](https://github.com/TDesktop-x64/Localization/blob/master/en.json)
 
-Then your language translation filename is `de.json` or something like that.
+## 源码构建指南 (Build Instructions)
 
-***Note: Ignore base ID(base ID translation - Work in progress)***
+- [Windows (32-bit and 64-bit)][win]
+- [macOS][mac]
+- [GNU/Linux using Docker][linux]
 
-## Build instructions
+## 相关链接 (Links)
 
-* [Windows (32-bit and 64-bit)][win]
-* [macOS][mac]
-* [GNU/Linux using Docker][linux]
-
-## Links
-
-* [Official Telegram Channel](https://t.me/tg_x64)
-* [Official discussion group](https://t.me/tg_x64_chat)
+- [本项目 GitHub Releases](https://github.com/lemon-o/tdesktop/releases)
+- [64Gram 官方频道](https://t.me/tg_x64)
+- [64Gram 官方讨论群](https://t.me/tg_x64_chat)
 
 [//]: # (LINKS)
 [license]: LICENSE

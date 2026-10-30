@@ -1,0 +1,98 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name'
+        required: true
+        default: 'v1.2.10-boost'
+      mac_run_id:
+        description: 'macOS workflow run ID'
+        required: true
+        default: '41048661184'
+      win_run_id:
+        description: 'Windows workflow run ID'
+        required: true
+        default: '41055654815'
+      release_title:
+        description: 'Release title'
+        required: true
+        default: '64Gram v1.2.10 (Download Acceleration & Video Boost)'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download macOS build artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p mac_dl
+          gh run download ${{ github.event.inputs.mac_run_id }} -n "Telegram" --dir mac_dl --repo ${{ github.repository }}
+          echo "macOS artifact contents:"
+          ls -la mac_dl/
+
+      - name: Download Windows build artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p win_dl
+          gh run download ${{ github.event.inputs.win_run_id }} -n "Telegram x64" --dir win_dl --repo ${{ github.repository }}
+          echo "Windows artifact contents:"
+          ls -la win_dl/
+
+      - name: Create macOS DMG package
+        run: |
+          mkdir -p dmg_staging
+          ditto mac_dl/Telegram.app dmg_staging/Telegram.app
+          if [ -f mac_dl/Updater ]; then
+            mkdir -p dmg_staging/Telegram.app/Contents/Frameworks
+            cp mac_dl/Updater dmg_staging/Telegram.app/Contents/Frameworks/Updater
+            chmod +x dmg_staging/Telegram.app/Contents/Frameworks/Updater
+          fi
+          chmod +x dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
+          ln -s /Applications dmg_staging/Applications
+          hdiutil create -volname "Telegram" -srcfolder dmg_staging -ov -format UDZO Telegram-macOS.dmg
+          ls -lh Telegram-macOS.dmg
+
+      - name: Create Windows ZIP package
+        run: |
+          cd win_dl
+          zip -9 -r ../Telegram-Windows-x64.zip Telegram.exe Updater.exe
+          cd ..
+          ls -lh Telegram-Windows-x64.zip
+
+      - name: Upload packaged assets as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: |
+            Telegram-macOS.dmg
+            Telegram-Windows-x64.zip
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.inputs.tag_name }}"
+          TITLE="${{ github.event.inputs.release_title }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, uploading assets..."
+            gh release upload "$TAG" Telegram-macOS.dmg Telegram-Windows-x64.zip --clobber
+          else
+            echo "Creating new release $TAG..."
+            gh release create "$TAG" \
+              Telegram-macOS.dmg \
+              Telegram-Windows-x64.zip \
+              --title "$TITLE" \
+              --notes-file RELEASE_NOTES.md \
+              --target ${{ github.ref_name }}
+          fi
