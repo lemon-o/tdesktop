@@ -59,7 +59,7 @@ jobs:
       - name: Create macOS DMG package
         run: |
           sudo apt-get update
-          sudo apt-get install -y hfsprogs llvm
+          sudo apt-get install -y genisoimage cmake build-essential zlib1g-dev llvm
 
           mkdir -p dmg_staging
           cp -a mac_dl/Telegram.app dmg_staging/
@@ -69,26 +69,32 @@ jobs:
             chmod +x dmg_staging/Telegram.app/Contents/Frameworks/Updater
           fi
 
-          # Strip debug symbols from Mach-O binary to keep size optimal
-          llvm-strip --strip-debug dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
+          # Strip debug symbols and symbol tables from Mach-O binaries using llvm-strip
+          llvm-strip dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
+          find dmg_staging/Telegram.app/Contents/Frameworks -name "*.dylib" -exec llvm-strip {} + 2>/dev/null || true
           chmod +x dmg_staging/Telegram.app/Contents/MacOS/Telegram || true
           ln -s /Applications dmg_staging/Applications
 
-          # Calculate exact size needed in MB + 100MB filesystem headroom
-          APP_SIZE_MB=$(du -sm dmg_staging | cut -f1)
-          TOTAL_MB=$((APP_SIZE_MB + 100))
-          echo "App size: ${APP_SIZE_MB}MB, creating HFS+ DMG of ${TOTAL_MB}MB"
+          # Create raw disk image using genisoimage
+          genisoimage -V "Telegram" -D -R -apple -no-pad -o Telegram-raw.dmg dmg_staging/
 
-          # Create and format native Apple HFS+ disk image
-          dd if=/dev/zero of=Telegram-macOS.dmg bs=1M count=${TOTAL_MB} status=none
-          mkfs.hfsplus -v "Telegram" Telegram-macOS.dmg
+          # Build libdmg-hfsplus without OpenSSL/crypto to produce compressed UDZO DMG
+          git clone --depth 1 https://github.com/hamstergene/libdmg-hfsplus.git
+          cd libdmg-hfsplus
+          sed -i 's/VERSION [0-9.]*/VERSION 3.5/' CMakeLists.txt
+          sed -i 's/find_package(OpenSSL)/# find_package(OpenSSL)/' dmg/CMakeLists.txt || true
+          sed -i 's/if(OPENSSL_FOUND)/if(FALSE)/' dmg/CMakeLists.txt || true
+          cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 .
+          make -j$(nproc) dmg || true
+          cd ..
 
-          # Mount, populate, and unmount
-          mkdir -p mnt_dir
-          sudo mount -o loop Telegram-macOS.dmg mnt_dir
-          sudo cp -a dmg_staging/* mnt_dir/
-          sudo umount mnt_dir
-          rmdir mnt_dir
+          if [ -f libdmg-hfsplus/dmg/dmg ]; then
+            echo "Compressing into native Apple UDZO DMG using libdmg..."
+            ./libdmg-hfsplus/dmg/dmg dmg Telegram-raw.dmg Telegram-macOS.dmg || cp Telegram-raw.dmg Telegram-macOS.dmg
+          else
+            echo "Using raw disk image as DMG..."
+            cp Telegram-raw.dmg Telegram-macOS.dmg
+          fi
 
           ls -lh Telegram-macOS.dmg
 
