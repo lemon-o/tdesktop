@@ -15,9 +15,8 @@ INTERFACE
     $<$<CXX_COMPILER_ID:GNU>:-Wno-reorder>
 )
 
-if (MSVC AND CMAKE_GENERATOR MATCHES "^Visual Studio ")
-    set_property(TARGET td_iv APPEND PROPERTY VS_PROJECT_IMPORT
-        ${CMAKE_CURRENT_LIST_DIR}/td_iv_msvc_warning_suppressions.props)
+if (MSVC)
+    target_compile_options(td_iv PRIVATE /wd5038 /wd4265 /wd4005)
 endif()
 
 target_precompile_headers(td_iv PRIVATE ${src_loc}/iv/iv_pch.h)
