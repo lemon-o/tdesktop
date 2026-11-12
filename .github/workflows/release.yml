@@ -70,7 +70,11 @@ jobs:
           # 2. Create high-compression ZIP package using 7-Zip (maximum Deflate settings)
           echo "Creating Telegram-Windows-x64.zip..."
           cd win_dl
-          7z a -tzip -mx=9 -mfb=258 -mpass=15 ../Telegram-Windows-x64.zip Telegram.exe Updater.exe
+          if [ -f Updater.exe ]; then
+            7z a -tzip -mx=9 -mfb=258 -mpass=15 ../Telegram-Windows-x64.zip Telegram.exe Updater.exe
+          else
+            7z a -tzip -mx=9 -mfb=258 -mpass=15 ../Telegram-Windows-x64.zip Telegram.exe
+          fi
           cd ..
           ls -lh Telegram-Windows-x64.zip
 
