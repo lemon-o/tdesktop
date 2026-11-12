@@ -108,6 +108,7 @@ object_ptr<Ui::BoxContent> PrepareContactsBox(
 	const auto raw = controller.get();
 	auto init = [=](not_null<PeerListBox*> box) {
 		struct State {
+			using Mode = ContactsBoxController::SortMode;
 			QPointer<::Ui::IconButton> toggleSort;
 			rpl::variable<Mode> mode = Mode::Online;
 			::Ui::Animations::Simple scrollAnimation;

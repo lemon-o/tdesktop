@@ -547,6 +547,7 @@ win:
     git clone https://github.com/desktop-app/lzma.git
     cd lzma\\C\\Util\\LzmaLib
     SET "ToolsetProp="
+    if "%VisualStudioVersion%" == "16.0" SET "ToolsetProp=/property:PlatformToolset=v142"
 winarm:
     SET "ToolsetProp=/property:PlatformToolset=v145"
 win:
@@ -1107,8 +1108,10 @@ win:
 
 win32:
     SET "TOOLCHAIN=x86-win32-vs17"
+    if "%VisualStudioVersion%" == "16.0" SET "TOOLCHAIN=x86-win32-vs16"
 win64:
     SET "TOOLCHAIN=x86_64-win64-vs17"
+    if "%VisualStudioVersion%" == "16.0" SET "TOOLCHAIN=x86_64-win64-vs16"
 winarm:
     SET "TOOLCHAIN=arm64-win64-vs17-v145"
 win:

@@ -1089,7 +1089,7 @@ void WebViewInstance::resolveApp(
 		// Check if this app can be added to main menu.
 		// On fail it'll still be opened.
 		using Result = AttachWebView::AddToMenuResult;
-		const auto done = crl::guard(this, [=](Result value, auto) {
+		const auto done = crl::guard(this, [=](Result value, PeerTypes) {
 			if (value == Result::Cancelled) {
 				close();
 			} else if (value != Result::Unsupported) {
@@ -1350,7 +1350,7 @@ void WebViewInstance::requestChatJoin() {
 
 void WebViewInstance::requestWithMainMenuDisclaimer() {
 	using Result = AttachWebView::AddToMenuResult;
-	const auto done = crl::guard(this, [=](Result value, auto) {
+	const auto done = crl::guard(this, [=](Result value, PeerTypes) {
 		if (value == Result::Cancelled) {
 			close();
 		} else if (value == Result::Unsupported) {

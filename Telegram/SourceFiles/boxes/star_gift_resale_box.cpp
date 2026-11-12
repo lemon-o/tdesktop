@@ -348,30 +348,31 @@ struct ResaleTabs {
 
 		setSelected(-1);
 		state->buttons.resize(kFiltersCount);
-		const auto &list = fields.attributes;
-		const auto setForIndex = [&](int i, auto many, auto one) {
-			const auto type = IndexToType(i);
-			const auto count = ranges::count(
-				list,
-				type,
+		const auto countFor = [&](int i) {
+			return ranges::count(
+				fields.attributes,
+				IndexToType(i),
 				&GiftAttributeId::type);
-			state->buttons[i].text = ResaleTabText((count > 0)
-				? many(tr::now, lt_count, count)
-				: one(tr::now));
+		};
+		const auto setForIndex = [&](int i, QString text) {
+			state->buttons[i].text = ResaleTabText(std::move(text));
 		};
 		state->buttons[0].text = SortModeText(fields.sort);
-		setForIndex(
-			1,
-			tr::lng_gift_resale_models,
-			tr::lng_gift_resale_model);
-		setForIndex(
-			2,
-			tr::lng_gift_resale_backdrops,
-			tr::lng_gift_resale_backdrop);
-		setForIndex(
-			3,
-			tr::lng_gift_resale_symbols,
-			tr::lng_gift_resale_symbol);
+		if (const auto count = countFor(1)) {
+			setForIndex(1, tr::lng_gift_resale_models(tr::now, lt_count, count));
+		} else {
+			setForIndex(1, tr::lng_gift_resale_model(tr::now));
+		}
+		if (const auto count = countFor(2)) {
+			setForIndex(2, tr::lng_gift_resale_backdrops(tr::now, lt_count, count));
+		} else {
+			setForIndex(2, tr::lng_gift_resale_backdrop(tr::now));
+		}
+		if (const auto count = countFor(3)) {
+			setForIndex(3, tr::lng_gift_resale_symbols(tr::now, lt_count, count));
+		} else {
+			setForIndex(3, tr::lng_gift_resale_symbol(tr::now));
+		}
 
 		const auto padding = st::giftBoxTabPadding;
 		for (auto &button : state->buttons) {
